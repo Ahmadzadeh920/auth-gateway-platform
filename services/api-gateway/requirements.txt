@@ -1,0 +1,13 @@
+
+fastapi
+uvicorn[standard]
+python-jose[cryptography]    # JWT decoding
+httpx                        # async HTTP client
+pydantic
+python-keycloak              # keycloak admin & token client
+
+# Testing
+pytest
+pytest-asyncio
+pytest-cov
+httpx[http2]

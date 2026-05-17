@@ -1,0 +1,11 @@
+name: New Environment
+values:
+  - key: keycloak_url
+    value: 'http://localhost:8080'
+    description: ''
+  - key: realm_name
+    value: AdrianOPS
+    description: ''
+  - key: client_id
+    value: postman-client
+    description: ''

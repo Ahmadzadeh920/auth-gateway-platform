@@ -1,0 +1,8 @@
+name: Keyclock_env
+values:
+  - key: keycloak-url
+    value: 'http://localhost:8080'
+  - key: realm_name
+    value: AdrianOPS
+  - key: client_id
+    value: postman-client

@@ -1,0 +1,8 @@
+http:
+  middlewares:
+    auth-mw:
+      forwardAuth:
+        address: "http://auth-middleware:8000/verify"
+        trustForwardHeader: true
+
+  

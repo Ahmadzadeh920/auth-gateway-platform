@@ -1,0 +1,129 @@
+version: "3.9"
+
+networks:
+  traefik-net:
+    driver: bridge
+
+services:
+
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy
+    privileged: true
+    networks:
+      - traefik-net
+    environment:
+      - SERVICES=1
+      - CONTAINERS=1
+      - NETWORKS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  traefik:
+    image: traefik:v3
+    networks:
+      - traefik-net
+    depends_on:
+      - docker-proxy
+    environment:
+      - DOCKER_API_VERSION=1.41
+      - TRAEFIK_PROVIDERS_DOCKER=true
+      - TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://docker-proxy:2375
+      - TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT=false
+      - TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:80
+      - TRAEFIK_API_DASHBOARD=true
+      - TRAEFIK_API_INSECURE=true
+      - TRAEFIK_PROVIDERS_FILE_FILENAME=/etc/traefik/dynamic.yml
+    ports:
+      - "8088:80"
+      - "8081:8080"
+    volumes:
+      - ./services/api-gateway/dynamic.yml:/etc/traefik/dynamic.yml
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    networks:
+      - traefik-net
+    restart: always
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: kc_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  keycloak:
+    image: keycloak/keycloak:24.0
+    container_name: keycloak
+    networks:
+      - traefik-net
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: kc_password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    command:
+      - start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    volumes:
+      - ./docker/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf
+      - ./docker/keycloak/themes:/opt/keycloak/themes
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=PathPrefix(`/keycloak`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+      - "traefik.http.middlewares.keycloak-strip.stripprefix.prefixes=/keycloak"
+      - "traefik.http.routers.keycloak.middlewares=keycloak-strip@docker"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    networks:
+      - traefik-net
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    networks:
+      - traefik-net
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  auth-middleware:
+    build: ./services/api-gateway
+    networks:
+      - traefik-net
+    ports:
+      - "8000:8000"
+    depends_on:
+      - keycloak
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.middlewares.auth-strip.stripprefix.prefixes=/auth"
+      - "traefik.http.routers.auth.middlewares=auth-strip@docker"
+      - "traefik.http.services.auth.loadbalancer.server.port=8000"
+
+volumes:
+  postgres_data:
+  pgadmin_data:
