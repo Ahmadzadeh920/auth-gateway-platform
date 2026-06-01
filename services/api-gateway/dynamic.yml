@@ -4,5 +4,18 @@ http:
       forwardAuth:
         address: "http://auth-middleware:8000/verify"
         trustForwardHeader: true
+    
+
+    security-headers:
+      headers:
+        frameDeny: true
+        browserXssFilter: true
+        contentTypeNosniff: true
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        stsPreload: true
+
+    compress-mw:
+      compress: {}
 
   

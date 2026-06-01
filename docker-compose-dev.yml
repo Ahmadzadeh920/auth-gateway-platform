@@ -1,4 +1,4 @@
-version: "3.9"
+
 
 networks:
   traefik-net:
@@ -18,26 +18,35 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
 
+
+
+
+  prometheus:
+    image: prom/prometheus:latest
+    networks:
+      - traefik-net
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
   traefik:
     image: traefik:v3
     networks:
       - traefik-net
     depends_on:
       - docker-proxy
-    environment:
-      - DOCKER_API_VERSION=1.41
-      - TRAEFIK_PROVIDERS_DOCKER=true
-      - TRAEFIK_PROVIDERS_DOCKER_ENDPOINT=tcp://docker-proxy:2375
-      - TRAEFIK_PROVIDERS_DOCKER_EXPOSEDBYDEFAULT=false
-      - TRAEFIK_ENTRYPOINTS_WEB_ADDRESS=:80
-      - TRAEFIK_API_DASHBOARD=true
-      - TRAEFIK_API_INSECURE=true
-      - TRAEFIK_PROVIDERS_FILE_FILENAME=/etc/traefik/dynamic.yml
+    command:
+      - "--configFile=/etc/traefik/traefik.yml" # Point to the file
+    
     ports:
-      - "8088:80"
-      - "8081:8080"
+      - "8089:80"    # web entrypoint
+      - "8087:8081"  # metrics entrypoint
+      - "8090:8080"  # dashboard (api.insecure)
     volumes:
       - ./services/api-gateway/dynamic.yml:/etc/traefik/dynamic.yml
+      - ./services/api-gateway/traefik.yml:/etc/traefik/traefik.yml
+      - ./logs/traefik:/var/log/traefik  # Mount the log directory
 
   postgres:
     image: postgres:15
@@ -47,8 +56,8 @@ services:
     restart: always
     environment:
       POSTGRES_DB: keycloak
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: kc_password
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -63,10 +72,12 @@ services:
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: kc_password
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTP_RELATIVE_PATH: /keycloak
+      
     command:
       - start-dev
     ports:
@@ -82,7 +93,6 @@ services:
       - "traefik.http.routers.keycloak.entrypoints=web"
       - "traefik.http.middlewares.keycloak-strip.stripprefix.prefixes=/keycloak"
       - "traefik.http.routers.keycloak.middlewares=keycloak-strip@docker"
-      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
 
   pgadmin:
     image: dpage/pgadmin4
@@ -123,6 +133,29 @@ services:
       - "traefik.http.middlewares.auth-strip.stripprefix.prefixes=/auth"
       - "traefik.http.routers.auth.middlewares=auth-strip@docker"
       - "traefik.http.services.auth.loadbalancer.server.port=8000"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    networks:
+      - traefik-net
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"  # OTLP gRPC (if sending directly, but we use OTel collector)
+
+
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    networks:
+      - traefik-net
+    command: ["--config=/etc/otel-config.yaml"]
+    volumes:
+      - ./docker/otel/collector-config.yaml:/etc/otel-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+    depends_on:
+      - jaeger
 
 volumes:
   postgres_data:

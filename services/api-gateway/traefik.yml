@@ -1,0 +1,54 @@
+
+# 1. Global Configuration
+log:
+  level: INFO # Set to DEBUG for deep investigation
+
+
+api:
+  dashboard: true
+  insecure: true  # Enables the dashboard on :8080
+# ------------------------
+providers:
+  docker:
+    endpoint: "tcp://docker-proxy:2375"
+    exposedByDefault: false
+  file:
+    filename: "/etc/traefik/dynamic.yml"
+
+# 2. Access Logs: JSON format for ingestion (Loki/ELK)
+accessLog:
+  filePath: "/var/log/traefik/access.log"  # Path inside the container
+  format: json
+  bufferingSize: 100
+  filters:
+    statusCodes: ["400-599"] # Focus only on errors
+  fields:
+    defaultMode: keep
+    headers:
+      defaultMode: drop # Security: drop sensitive headers
+      names:
+        User-Agent: keep
+        X-Request-ID: keep
+
+# 3. Metrics: Prometheus (Scraping endpoint)
+metrics:
+  prometheus:
+    entryPoint: "metrics"
+    addEntryPointsLabels: true
+    addServicesLabels: true
+
+# 4. Tracing: OpenTelemetry
+
+tracing:
+  otlp: # Use 'otlp' for Traefik v3
+    grpc:
+      endpoint: "otel-collector:4317"
+      insecure: true
+
+
+# 5. EntryPoints
+entryPoints:
+  web:
+    address: ":80"
+  metrics:
+    address: ":8081" # Matched to your docker-compose 8081:8081 port

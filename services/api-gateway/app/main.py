@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.routing import APIRoute
 from jose import jwt
+from jose.utils import base64url_decode
 import httpx
 import logging
 
@@ -9,7 +10,7 @@ import logging
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-KEYCLOAK_URL = "http://keycloak:8080"
+KEYCLOAK_URL = "http://keycloak:8080/keycloak"  # This should match the internal URL of Keycloak in your Docker network
 REALM = "AdrinaopsClient"
 
 
@@ -17,32 +18,21 @@ KEYCLOAK_EXTERNAL_URL = "http://localhost:8088/keycloak"
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
 
-async def verify_token(token: str = Depends(oauth2_scheme)):
+
+async def get_public_key():
     async with httpx.AsyncClient() as client:
         response = await client.get(f"{KEYCLOAK_URL}/realms/{REALM}")
+        response.raise_for_status()
         realm_data = response.json()
 
-    public_key = "-----BEGIN PUBLIC KEY-----\n" + realm_data["public_key"] + "\n-----END PUBLIC KEY-----"
+    return "-----BEGIN PUBLIC KEY-----\n" + realm_data["public_key"] + "\n-----END PUBLIC KEY-----"
 
-    try:
-        payload = jwt.decode(
-            token,
-            public_key,
-            algorithms=["RS256"],
-            audience="account"   # IMPORTANT: this should NOT be "preferred_username"
-        )
-        return payload
-
-    except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     """Dependency to get and verify the current user from a Bearer token."""
     return await verify_jwt_token(token)
+
+
 
 @app.get("/secure-endpoint")
 async def secure_endpoint(user=Depends(get_current_user)):
@@ -127,6 +117,9 @@ async def verify_for_traefik(request: Request):
         # Catch any other unexpected errors during the /verify process
         log.error(f"Unexpected error in /verify endpoint: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error during verification: {e}")
+
+
+
 
 @app.get("/")
 def read_root(request: Request):
