@@ -15,16 +15,17 @@ Auth Gateway Platform is a Docker-based authentication and routing demo that com
 
 # 📂 Directory Structure
 
+```text
 auth-gateway-platform/
-├── docker/                 # Infrastructure configurations (Keycloak, Postgres, etc.)
-├── deployments/            # K8s manifests and reusable GitHub Action templates
+├── docker/                 # Infrastructure configurations (Keycloak, PostgreSQL, etc.)
+├── deployments/            # Kubernetes manifests and reusable GitHub Actions templates
 ├── services/               # Microservices organized by domain (Clean Architecture)
 │   ├── auth-middleware/
 │   ├── api-gateway/
-│   └── service-A/
-└── docker-compose-dev.yml
+│   └── service-a/
+├── docker-compose-dev.yml
 └── .env
-
+```
 
 ## Getting Started
 
