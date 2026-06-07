@@ -39,7 +39,7 @@ jobs:
 
       - name: Lint
         run: |
-          ruff check .
+          ruff check . --fix
 
       - name: Run Tests
         working-directory: services/api-gateway

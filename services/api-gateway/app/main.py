@@ -2,7 +2,6 @@ from fastapi import FastAPI, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.routing import APIRoute
 from jose import jwt
-from jose.utils import base64url_decode
 import httpx
 import logging
 
