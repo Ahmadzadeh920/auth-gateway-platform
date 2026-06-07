@@ -13,7 +13,7 @@ on:
 
 env:
   PYTHON_VERSION: "3.11"
-  IMAGE_NAME: auth-middleware
+  IMAGE_NAME: api-gateway
 
 jobs:
 
@@ -34,7 +34,7 @@ jobs:
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r ../requirements.txt
+          pip install -r services/api-gateway/requirements.txt
           pip install ruff
 
       - name: Lint
@@ -42,6 +42,7 @@ jobs:
           ruff check .
 
       - name: Run Tests
+        working-directory: services/api-gateway
         run: |
           pytest \
             --junitxml=test-results.xml \
@@ -79,15 +80,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker Image
-        uses: docker/setup-buildx-action@v4
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./services/api-gateway
           push: true
           tags: |
-            ghcr.io/${{ github.repository_owner }}/auth-middleware:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/auth-middleware:latest
-
-  
+            ghcr.io/${{ github.repository_owner }}/api-gateway:${{ github.sha }}
+            ghcr.io/${{ github.repository_owner }}/api-gateway:latest
+                
 
       
