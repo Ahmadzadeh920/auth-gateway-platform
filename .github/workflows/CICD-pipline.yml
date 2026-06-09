@@ -45,7 +45,7 @@ jobs:
         working-directory: services/api-gateway
         run: |
           pytest \
-            --junitxml=services/api-gateway/tests/test-results.xml \
+            --junitxml=tests/test-results.xml \
             --cov=services/api-gateway/app \
             --cov-report=xml
 
@@ -55,7 +55,7 @@ jobs:
           name: test-reports
           path: |
             services/api-gateway/tests/test-results.xml
-            coverage.xml
+            services/api-gateway/tests/coverage.xml
 
   docker-build:
     name: Build Docker Image
