@@ -61,6 +61,28 @@ jobs:
             services/api-gateway/tests/test-results.xml
             services/api-gateway/tests/coverage.xml
 
+
+
+  codeql:
+    name: CodeQL Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: python
+
+      - uses: github/codeql-action/autobuild@v3
+
+      - uses: github/codeql-action/analyze@v3
+
+
+  
   docker-build:
     name: Build Docker Image
     needs: test
