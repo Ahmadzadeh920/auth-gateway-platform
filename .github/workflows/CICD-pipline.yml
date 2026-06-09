@@ -14,15 +14,16 @@ on:
 env:
   IMAGE_NAME: api-gateway
 
-strategy:
-  matrix:
-    python-version: [3.10, 3.11, 3.12]
 
 jobs:
 
   test:
     name: Test & Quality Checks
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.10, 3.11, 3.12]
+
 
     steps:
       - name: Checkout Source
