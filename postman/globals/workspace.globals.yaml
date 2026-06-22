@@ -1,0 +1,11 @@
+name: Globals
+values:
+  - key: keycloak-url
+    value: 'http://localhost:8080'
+    enabled: true
+  - key: realm-name
+    value: AdrianOPS
+    enabled: true
+  - key: client_id
+    value: account
+    enabled: true

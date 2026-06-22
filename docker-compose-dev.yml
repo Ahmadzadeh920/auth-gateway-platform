@@ -1,0 +1,195 @@
+
+
+networks:
+  traefik-net:
+    driver: bridge
+
+services:
+
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy
+    privileged: true
+    networks:
+      - traefik-net
+    environment:
+      - SERVICES=1
+      - CONTAINERS=1
+      - NETWORKS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+
+
+
+  prometheus:
+    image: prom/prometheus:latest
+    networks:
+      - traefik-net
+    volumes:
+      - ./docker/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+
+  traefik:
+    image: traefik:v3
+    networks:
+      - traefik-net
+    depends_on:
+      - docker-proxy
+    command:
+      - "--configFile=/etc/traefik/traefik.yml" # Point to the file
+    
+    ports:
+      - "8089:80"    # web entrypoint
+      - "8087:8081"  # metrics entrypoint
+      - "8090:8080"  # dashboard (api.insecure)
+    volumes:
+      - ./services/api-gateway/dynamic.yml:/etc/traefik/dynamic.yml
+      - ./services/api-gateway/traefik.yml:/etc/traefik/traefik.yml
+      - ./logs/traefik:/var/log/traefik  # Mount the log directory
+
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    networks:
+      - traefik-net
+    restart: always
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+
+  keycloak:
+    image: keycloak/keycloak:24.0
+    container_name: keycloak
+    networks:
+      - traefik-net
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTP_RELATIVE_PATH: /keycloak
+      
+    command:
+      - start-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    volumes:
+      - ./docker/keycloak/keycloak.conf:/opt/keycloak/conf/keycloak.conf
+      - ./docker/keycloak/themes:/opt/keycloak/themes
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.rule=PathPrefix(`/keycloak`)"
+      - "traefik.http.routers.keycloak.entrypoints=web"
+      - "traefik.http.middlewares.keycloak-strip.stripprefix.prefixes=/keycloak"
+      - "traefik.http.routers.keycloak.middlewares=keycloak-strip@docker"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    networks:
+      - traefik-net
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    networks:
+      - traefik-net
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  auth-middleware:
+    build: ./services/api-gateway
+    networks:
+      - traefik-net
+    ports:
+      - "8000:8000"
+    depends_on:
+      - keycloak
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/auth`)"
+      - "traefik.http.routers.auth.entrypoints=web"
+      - "traefik.http.middlewares.auth-strip.stripprefix.prefixes=/auth"
+      - "traefik.http.routers.auth.middlewares=auth-strip@docker"
+      - "traefik.http.services.auth.loadbalancer.server.port=8000"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    networks:
+      - traefik-net
+    ports:
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"  # OTLP gRPC (if sending directly, but we use OTel collector)
+
+
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    networks:
+      - traefik-net
+    command: ["--config=/etc/otel-config.yaml"]
+    volumes:
+      - ./docker/otel/collector-config.yaml:/etc/otel-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+    depends_on:
+      - jaeger
+  
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    depends_on:
+      - sonarqube-db
+    ports:
+      - "9000:9000"
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    restart: unless-stopped
+
+  sonarqube-db:
+    image: postgres:15
+    container_name: sonarqube-db
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonarqube_db:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  sonarqube_db:
