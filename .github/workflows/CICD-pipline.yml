@@ -50,8 +50,8 @@ jobs:
         run: |
           pytest \
             --junitxml=tests/test-results.xml \
-            --cov=services/api-gateway/app \
-            --cov-report=xml
+            --cov= app \
+            --cov-report=xml:coverage.xml
 
       - name: Upload Test Reports
         uses: actions/upload-artifact@v7.0.1
@@ -81,6 +81,37 @@ jobs:
 
       - uses: github/codeql-action/analyze@v3
 
+  
+
+
+
+
+  sonarqube:
+    name: SonarQube Scan
+    needs: test
+    runs-on:
+      - self-hosted
+      - linux
+
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v6
+
+      - name: Download Test Reports
+        uses: actions/download-artifact@v5
+        with:
+          name: test-reports
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+      - name: SonarQube Quality Gate
+        uses: SonarSource/sonarqube-quality-gate-action@v1.2.0
+        timeout-minutes: 5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   
   docker-build:
