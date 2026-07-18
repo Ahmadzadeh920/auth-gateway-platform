@@ -10,6 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app source
 COPY ./app ./app
+COPY tests ./tests
 
 # Environment vars (optional)
 ENV PYTHONUNBUFFERED=1

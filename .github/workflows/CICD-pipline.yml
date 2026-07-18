@@ -50,7 +50,7 @@ jobs:
         run: |
           pytest \
             --junitxml=tests/test-results.xml \
-            --cov= app \
+            --cov=app \
             --cov-report=xml:coverage.xml
 
       - name: Upload Test Reports
