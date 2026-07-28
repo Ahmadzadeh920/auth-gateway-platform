@@ -41,36 +41,61 @@ async def secure_endpoint(user=Depends(get_current_user)):
 
 
 async def verify_jwt_token(token: str):
-    """
-    Decodes and verifies a JWT token using Keycloak's public key.
-    Raises HTTPException 401 on failure.
-    """
+
     try:
         public_key = await get_public_key()
-        
-        # IMPORTANT: 'audience' should match the 'aud' claim in your JWT.
-        # Common values are 'account' for default Keycloak client tokens,
-        # or the specific client ID if you configured it as such.
-        # Check your JWT payload (e.g., using jwt.io) to confirm the 'aud' claim.
+
         payload = jwt.decode(
             token,
             public_key,
             algorithms=["RS256"],
-            audience="account", # Adjust this if your client's 'aud' claim is different
-            options={"verify_signature": True, "verify_aud": True, "exp": True}
+            audience="account",
         )
-        log.info(f"Token validated for user: {payload.get('preferred_username', 'N/A')}")
+
+        log.info(
+            "Token validated for user: %s",
+            payload.get("preferred_username", "N/A")
+        )
+
         return payload
+
+
     except jwt.ExpiredSignatureError:
-        log.warning("Token expired.")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has expired")
+        log.warning("Token expired")
+
+        raise HTTPException(
+            status_code=401,
+            detail="Token expired"
+        )
+
+
     except jwt.JWTError as e:
-        log.warning(f"Invalid token signature or claims: {e}")
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Invalid token: {e}")
-    except HTTPException: # Re-raise HTTPExceptions from get_public_key
+        log.warning(
+            "Invalid token: %s",
+            e
+        )
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+
+
+    except httpx.HTTPError:
+        log.exception(
+            "Keycloak request failed"
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service unavailable"
+        )
+
+
+    except HTTPException:
         raise
-    except Exception as e:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=f"Token verification failed: {e}")
+    
+   
 
 # This dependency is useful for other API endpoints within this middleware
 # if they also need to be protected and accept Bearer tokens directly.
@@ -111,11 +136,17 @@ async def verify_for_traefik(request: Request):
         # verify_jwt_token already raises 401 with appropriate detail
         # Re-raise it, FastAPI will handle converting it to a response
         log.info(f"Token verification failed for Traefik: {e.detail}")
-        raise e
+        raise 
     except Exception as e:
         # Catch any other unexpected errors during the /verify process
-        log.error(f"Unexpected error in /verify endpoint: {e}", exc_info=True)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Internal server error during verification: {e}")
+        log.exception(
+        "Unexpected error in /verify endpoint"
+            )
+
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error during verification"
+        )
 
 
 
