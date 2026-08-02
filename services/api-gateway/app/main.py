@@ -9,7 +9,8 @@ import logging
 app = FastAPI()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-KEYCLOAK_URL = "http://keycloak:8080/keycloak"  # This should match the internal URL of Keycloak in your Docker network
+KEYCLOAK_URL = "http://keycloak:8080/keycloak" 
+ # This should match the internal URL of Keycloak in your Docker network
 REALM = "AdrinaopsClient"
 
 
@@ -24,7 +25,11 @@ async def get_public_key():
         response.raise_for_status()
         realm_data = response.json()
 
-    return "-----BEGIN PUBLIC KEY-----\n" + realm_data["public_key"] + "\n-----END PUBLIC KEY-----"
+    return (
+    "-----BEGIN PUBLIC KEY-----\n"
+    + realm_data["public_key"]
+    + "\n-----END PUBLIC KEY-----"
+        )
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
@@ -52,12 +57,7 @@ async def verify_jwt_token(token: str):
             audience="account",
         )
 
-        log.info(
-            "Token validated for user: %s",
-            payload.get("preferred_username", "N/A")
-        )
-
-        return payload
+        
 
 
     except jwt.ExpiredSignatureError:
@@ -72,13 +72,13 @@ async def verify_jwt_token(token: str):
     except jwt.JWTError as e:
         log.warning(
             "Invalid token: %s",
-            e
+            e,
         )
 
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
-        )
+        ) from e
 
 
     except httpx.HTTPError:
@@ -95,7 +95,14 @@ async def verify_jwt_token(token: str):
     except HTTPException:
         raise
     
-   
+    else:
+        log.info(
+            "Token validated for user: %s",
+            payload.get("preferred_username", "N/A")
+        )
+
+        return payload
+
 
 # This dependency is useful for other API endpoints within this middleware
 # if they also need to be protected and accept Bearer tokens directly.
@@ -129,13 +136,13 @@ async def verify_for_traefik(request: Request):
         response = Response(status_code=200)
         # Example: Add custom headers from the JWT payload
         response.headers["X-User-ID"] = payload.get("sub", "")
-        response.headers["X-User-Preferred-Username"] = payload.get("preferred_username", "")
-        response.headers["X-User-Roles"] = ",".join(payload.get("realm_access", {}).get("roles", []))
-        return response
+        response.headers["X-User-Preferred-Username"] = (payload.get("preferred_username", ""))
+        response.headers["X-User-Roles"] = ",".join( payload.get("realm_access", {}).get("roles", []))
+        
     except HTTPException as e:
         # verify_jwt_token already raises 401 with appropriate detail
         # Re-raise it, FastAPI will handle converting it to a response
-        log.info(f"Token verification failed for Traefik: {e.detail}")
+        log.info("Token verification failed for Traefik: %s", e.detail, )
         raise 
     except Exception as e:
         # Catch any other unexpected errors during the /verify process
@@ -148,7 +155,8 @@ async def verify_for_traefik(request: Request):
             detail="Internal server error during verification"
         )
 
-
+    else:
+        return response
 
 
 @app.get("/")

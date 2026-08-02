@@ -6,11 +6,14 @@ WORKDIR /app
 
 # Install deps
 COPY requirements.txt .
+RUN python -m pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy app source
 COPY ./app ./app
-COPY tests ./tests
+COPY ./tests ./tests
+
+COPY pyproject.toml .
 
 # Environment vars (optional)
 ENV PYTHONUNBUFFERED=1

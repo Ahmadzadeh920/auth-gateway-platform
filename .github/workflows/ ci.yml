@@ -1,0 +1,291 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+
+###############################################################################
+# Test
+###############################################################################
+
+  test:
+
+    name: Test
+
+    uses: ./.github/workflows/reusable-test.yml
+
+    with:
+
+      runner: ubuntu-latest
+
+      python-versions: '["3.11","3.12"]'
+
+      working-directory: services/api-gateway
+
+      requirements-file: services/api-gateway/requirements.txt
+
+      lint: true
+
+      run-tests: true
+
+      artifact-name: api-test-results
+
+###############################################################################
+# CodeQL
+###############################################################################
+
+  codeql:
+
+    name: CodeQL
+
+    needs: test
+
+    uses: ./.github/workflows/reusable-codeql.yml
+
+    with:
+
+      runner: ubuntu-latest
+
+      languages: python
+
+      build-mode: none
+
+###############################################################################
+# SonarQube
+###############################################################################
+
+  sonarqube:
+
+    name: SonarQube
+
+    needs: test
+
+    uses: ./.github/workflows/reusable-sonarqube.yml
+
+    with:
+
+      runner: self-hosted
+
+      project-base-dir: .
+
+      download-artifact: true
+
+      artifact-name: api-test-results-3.12
+
+      quality-gate: true
+
+    secrets:
+
+      sonar-token: ${{ secrets.SONAR_TOKEN }}
+
+      sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+
+###############################################################################
+# Docker Build
+###############################################################################
+
+  docker-build:
+
+    name: Docker Build
+
+    needs:
+
+      - test
+      - codeql
+
+    uses: ./.github/workflows/reusable-docker-build.yml
+
+    with:
+
+      runner: ubuntu-latest
+
+      context: services/api-gateway
+
+      dockerfile: services/api-gateway/Dockerfile
+
+      image-name: api-gateway
+
+      image-tag: latest
+
+      save-artifact: true
+
+      artifact-name: docker-image
+
+###############################################################################
+# Trivy
+###############################################################################
+
+  trivy:
+
+    name: Trivy Scan
+
+    needs: docker-build
+
+    uses: ./.github/workflows/reusable-trivy.yml
+
+    with:
+
+      scan-type: image
+
+      scan-target: ${{ needs.docker-build.outputs.image }}
+
+      download-artifact: true
+
+      artifact-name: ${{ needs.docker-build.outputs.artifact-name }}
+
+      severity: HIGH,CRITICAL
+
+      scanners: vuln,secret
+
+      report-artifact-name: trivy-results
+
+###############################################################################
+# Docker Push
+###############################################################################
+
+  docker-push:
+
+    name: Docker Push
+
+    needs: 
+      - trivy
+      - docker-build
+
+    uses: ./.github/workflows/reusable-docker-push.yml
+
+    with:
+
+      runner: ubuntu-latest
+
+      registry: ghcr.io
+
+      registry-username: ${{ github.repository_owner }}
+
+      image-name: ${{ needs.docker-build.outputs.image-name }}
+
+      image-tag: ${{ needs.docker-build.outputs.image-tag }}
+
+      artifact-name: ${{ needs.docker-build.outputs.artifact-name }}
+
+    secrets:
+
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+###############################################################################
+# Deploy
+###############################################################################
+
+  deploy:
+
+    name: Deploy
+
+    needs: 
+      - docker-build
+      - docker-push
+
+
+    uses: ./.github/workflows/reusable-deploy.yml
+
+    with:
+
+      deployment-type: docker-compose
+
+      environment: production
+
+      image: ${{ needs.docker-push.outputs.image }}
+
+      image-tag: ${{ needs.docker-build.outputs.image-tag}}
+
+      compose-file: docker-compose.yml
+
+    secrets:
+
+      ssh-host: ${{ secrets.SERVER_HOST }}
+
+      ssh-user: ${{ secrets.SERVER_USER }}
+
+      ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+###############################################################################
+# Repository Sync
+###############################################################################
+
+  sync:
+
+    name: Repository Sync
+
+    needs: deploy
+
+    uses: ./.github/workflows/reusable-sync.yml
+
+    with:
+
+      source-branch: main
+
+      target-branch: release
+
+      target-repository: company/deployment
+
+    secrets:
+
+      target-token: ${{ secrets.REPO_SYNC_TOKEN }}
+
+###############################################################################
+# Notification
+###############################################################################
+
+  notify:
+
+    name: Notification
+
+    needs:
+
+      - docker-push
+      - deploy
+      - sync
+
+    if: always()
+
+    uses: ./.github/workflows/reusable-notification.yml
+
+    with:
+
+      channel: discord
+
+      status: >-
+        ${{
+          needs.deploy.result == 'failure' && 'failure' ||
+          needs.sync.result == 'failure' && 'failure' ||
+          needs.deploy.result == 'cancelled' && 'cancelled' ||
+          needs.sync.result == 'cancelled' && 'cancelled' ||
+          'success'
+        }}
+
+      title: CI/CD Pipeline Completed
+
+      message: |
+        Application: api-gateway
+
+        Image:
+        ${{ needs.docker-push.outputs.image }}
+
+        Deployment finished successfully.
+
+      application: api-gateway
+
+      environment: production
+
+    secrets:
+
+      discord-webhook: ${{ secrets.DISCORD_WEBHOOK }}
