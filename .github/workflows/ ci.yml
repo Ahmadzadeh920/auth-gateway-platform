@@ -50,6 +50,10 @@ jobs:
     name: CodeQL
 
     needs: test
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
 
     uses: ./.github/workflows/reusable-codeql.yml
 
@@ -130,6 +134,11 @@ jobs:
 
     name: Trivy Scan
 
+   
+    permissions:
+      contents: read
+      security-events: write
+
     needs: docker-build
 
     uses: ./.github/workflows/reusable-trivy.yml
@@ -161,6 +170,9 @@ jobs:
     needs: 
       - trivy
       - docker-build
+    permissions:
+      contents: read
+      packages: write
 
     uses: ./.github/workflows/reusable-docker-push.yml
 
@@ -250,7 +262,7 @@ jobs:
     name: Notification
 
     needs:
-
+      - docker-build
       - docker-push
       - deploy
       - sync
@@ -275,16 +287,16 @@ jobs:
       title: CI/CD Pipeline Completed
 
       message: |
-        Application: api-gateway
+        Application: ${{ needs.docker-build.outputs.image-name }}
 
         Image:
         ${{ needs.docker-push.outputs.image }}
 
         Deployment finished successfully.
 
-      application: api-gateway
+      application: ${{ needs.docker-build.outputs.image-name }}
 
-      environment: production
+      environment: development
 
     secrets:
 
