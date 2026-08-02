@@ -80,7 +80,7 @@ async def verify_jwt_token(token: str):
         ) from e
 
 
-    except httpx.HTTPError:
+    except httpx.HTTPError as err:
         log.exception(
             "Keycloak request failed"
         )
@@ -88,7 +88,7 @@ async def verify_jwt_token(token: str):
         raise HTTPException(
             status_code=503,
             detail="Authentication service unavailable"
-        )
+        ) from err
 
 
     except HTTPException:
@@ -145,7 +145,7 @@ async def verify_for_traefik(request: Request):
         # Re-raise it, FastAPI will handle converting it to a response
         log.info("Token verification failed for Traefik: %s", e.detail, )
         raise 
-    except Exception:
+    except Exception as err :
         # Catch any other unexpected errors during the /verify process
         log.exception(
         "Unexpected error in /verify endpoint"
@@ -154,7 +154,7 @@ async def verify_for_traefik(request: Request):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error during verification"
-        )
+        ) from err
 
     else:
         return response
