@@ -33,7 +33,7 @@ jobs:
 
       working-directory: services/api-gateway
 
-      requirements-file: services/api-gateway/requirements.txt
+      requirements-file: requirements.txt
 
       lint: true
 
@@ -217,7 +217,7 @@ jobs:
 
       image: ${{ needs.docker-push.outputs.image }}
 
-      image-tag: ${{ needs.docker-build.outputs.image-tag}}
+      image-tag: ${{ needs.docker-build.outputs.image-tag }}
 
       compose-file: docker-compose.yml
 
@@ -276,9 +276,12 @@ jobs:
       channel: discord
 
       status: >-
+       
         ${{
+          needs.docker-push.result == 'failure' && 'failure' ||
           needs.deploy.result == 'failure' && 'failure' ||
           needs.sync.result == 'failure' && 'failure' ||
+          needs.docker-push.result == 'cancelled' && 'cancelled' ||
           needs.deploy.result == 'cancelled' && 'cancelled' ||
           needs.sync.result == 'cancelled' && 'cancelled' ||
           'success'
