@@ -60,13 +60,12 @@ async def verify_jwt_token(token: str):
         
 
 
-    except jwt.ExpiredSignatureError:
+    except jwt.ExpiredSignatureError as err:
         log.warning("Token expired")
 
         raise HTTPException(
             status_code=401,
-            detail="Token expired"
-        )
+            detail="Token expired" ) from err
 
 
     except jwt.JWTError as e:
@@ -137,14 +136,16 @@ async def verify_for_traefik(request: Request):
         # Example: Add custom headers from the JWT payload
         response.headers["X-User-ID"] = payload.get("sub", "")
         response.headers["X-User-Preferred-Username"] = (payload.get("preferred_username", ""))
-        response.headers["X-User-Roles"] = ",".join( payload.get("realm_access", {}).get("roles", []))
-        
+        response.headers["X-User-Roles"] = ",".join(
+            payload.get("realm_access", {}).get("roles", [])
+            )
+            
     except HTTPException as e:
         # verify_jwt_token already raises 401 with appropriate detail
         # Re-raise it, FastAPI will handle converting it to a response
         log.info("Token verification failed for Traefik: %s", e.detail, )
         raise 
-    except Exception as e:
+    except Exception:
         # Catch any other unexpected errors during the /verify process
         log.exception(
         "Unexpected error in /verify endpoint"
