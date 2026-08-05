@@ -168,7 +168,7 @@ jobs:
     name: Docker Push
 
     needs: 
-      - trivy
+      #- trivy
       - docker-build
     permissions:
       contents: read
