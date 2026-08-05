@@ -159,6 +159,23 @@ jobs:
 
       report-artifact-name: trivy-results
 
+  convert-owner:
+
+      name: Convert Repository Owner to Lowercase
+
+      runs-on: ubuntu-latest
+
+      outputs:
+        owner: ${{ steps.owner.outputs.owner }}
+
+      steps:
+
+        - name: Convert owner
+          id: owner
+          shell: bash
+          run: |
+            echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
 ###############################################################################
 # Docker Push
 ###############################################################################
@@ -170,6 +187,7 @@ jobs:
     needs: 
       #- trivy
       - docker-build
+      - convert-owner
     permissions:
       contents: read
       packages: write
