@@ -116,6 +116,17 @@ jobs:
           name: ${{ inputs.artifact-name }}
 
       ##########################################################
+      # List artifact contents
+      ##########################################################
+
+
+      - name: List artifact contents
+        run: |
+          pwd
+          ls -lah
+
+
+      ##########################################################
       # Load Image
       ##########################################################
 
@@ -124,6 +135,14 @@ jobs:
         run: |
 
           docker load -i image.tar
+
+      ##########################################################
+      # Show Loaded Images
+      ##########################################################
+   
+      - name: Show Loaded Images
+        run: |
+          docker images
 
       ##########################################################
       # Login
@@ -154,9 +173,9 @@ jobs:
 
       
 
-##########################################################
-# Tag Image
-##########################################################
+      ##########################################################
+      # Tag Image
+      ##########################################################
 
       - name: Tag Docker Image
 
@@ -165,27 +184,23 @@ jobs:
           docker tag \
           ${{ inputs.image-name }}:${{ inputs.image-tag }} \
           ${{ inputs.registry }}/${{ inputs.registry-username }}/${{ inputs.image-name }}:${{ inputs.image-tag }}
-
+         
       ##########################################################
       # Push Image
       ##########################################################
 
       - name: Push Docker Image
-
         id: push
+        shell: bash
+        run: |
+            IMAGE="${{ inputs.registry }}/${{ inputs.registry-username }}/${{ inputs.image-name }}:${{ inputs.image-tag }}"
 
-        uses: docker/build-push-action@v6
+            docker push "$IMAGE"
 
-        with:
+            DIGEST=$(docker image inspect "$IMAGE" \
+              --format='{{index .RepoDigests 0}}')
 
-          context: .
-
-          push: true
-
-          load: false
-
-          tags: |
-            ${{ inputs.registry }}/${{ inputs.registry-username }}/${{ inputs.image-name }}:${{ inputs.image-tag }}
+            echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
       ##########################################################
       # Output Image
