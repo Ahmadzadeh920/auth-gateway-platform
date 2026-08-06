@@ -152,6 +152,29 @@ jobs:
           }" \
           "${{ secrets.teams-webhook }}"
 
+
+############################################################
+# Debug Discord Webhook
+############################################################
+
+      - name: Check Discord Webhook
+
+        if: inputs.channel == 'discord'
+
+        env:
+          WEBHOOK: ${{ secrets.discord-webhook }}
+
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "❌ Discord webhook secret is empty."
+            exit 1
+          fi
+
+          echo "✅ Discord webhook exists."
+          echo "Webhook length: ${#WEBHOOK}"
+          echo "Webhook prefix: ${WEBHOOK:0:35}..."
+
+
 ############################################################
 # Discord
 ############################################################
@@ -163,13 +186,12 @@ jobs:
         shell: bash
 
         run: |
-
-          curl \
-          -H "Content-Type: application/json" \
-          -d "{
-            \"content\":\"**${{ inputs.title }}**\n\n${{ steps.payload.outputs.BODY }}\"
-          }" \
-          "${{ secrets.discord-webhook }}"
+          curl -v \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"content\":\"**${{ inputs.title }}**\n\n${{ steps.payload.outputs.BODY }}\"
+            }" \
+            "$WEBHOOK"
 
 ############################################################
 # Summary

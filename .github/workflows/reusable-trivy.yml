@@ -70,7 +70,7 @@ on:
       exit-code:
         required: false
         type: number
-        default: 1
+        default: 0
 
       format:
         description: table,json,sarif

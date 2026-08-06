@@ -176,6 +176,8 @@ jobs:
           run: |
             echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
 
+
+
 ###############################################################################
 # Docker Push
 ###############################################################################
@@ -200,7 +202,7 @@ jobs:
 
       registry: ghcr.io
 
-      registry-username: ${{ github.repository_owner }}
+      registry-username:  ${{ needs.convert-owner.outputs.owner }}
 
       image-name: ${{ needs.docker-build.outputs.image-name }}
 
@@ -270,6 +272,9 @@ jobs:
     secrets:
 
       target-token: ${{ secrets.REPO_SYNC_TOKEN }}
+
+
+
 
 ###############################################################################
 # Notification
