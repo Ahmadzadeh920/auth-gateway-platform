@@ -280,7 +280,7 @@ jobs:
 
     name: Repository Sync
 
-    needs: deploy
+    # needs: deploy
 
     uses: ./.github/workflows/reusable-sync.yml
 
