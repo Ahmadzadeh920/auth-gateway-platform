@@ -79,7 +79,7 @@ jobs:
 
     with:
 
-      runner: self-hosted
+      runner: sonar
 
       project-base-dir: .
 
@@ -280,7 +280,8 @@ jobs:
 
     name: Repository Sync
 
-    # needs: deploy
+    needs: 
+      - Deploy-Kubernetes 
 
     uses: ./.github/workflows/reusable-sync.yml
 
