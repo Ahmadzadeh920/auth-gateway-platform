@@ -269,7 +269,7 @@ jobs:
       values-file: ./helm/auth-gateway/values.yaml 
       image-repository: ghcr.io/ahmadzadeh920/api-gateway 
       image-tag: ${{ github.sha }} 
-      secrets: inherit
+     
 
 
 ###############################################################################
