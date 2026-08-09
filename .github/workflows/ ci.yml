@@ -218,36 +218,59 @@ jobs:
 # Deploy
 ###############################################################################
 
-  deploy:
+  # deploy:
 
-    name: Deploy
+  #   name: Deploy
 
+  #   needs: 
+  #     - docker-build
+  #     - docker-push
+
+
+  #   uses: ./.github/workflows/reusable-deploy.yml
+
+  #   with:
+
+  #     deployment-type: docker-compose
+
+  #     environment: production
+
+  #     image: ${{ needs.docker-push.outputs.image }}
+
+  #     image-tag: ${{ needs.docker-build.outputs.image-tag }}
+
+  #     compose-file: docker-compose.yml
+
+  #   secrets:
+
+  #     ssh-host: ${{ secrets.SERVER_HOST }}
+
+  #     ssh-user: ${{ secrets.SERVER_USER }}
+
+  #     ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+
+
+###############################################################################
+# deploy with Kubernetes
+###############################################################################
+
+  deploy-Kubernetes: 
+    name: Deploy-Kubernetes 
     needs: 
       - docker-build
       - docker-push
+    uses: ./.github/workflows/reusable-deploy-kubernetes.yml
+    with: 
+      runner: k3s 
+      application: auth-gateway 
+      namespace: myapp
+      helm-chart: ./helm/auth-gateway 
+      values-file: ./helm/auth-gateway/values.yaml 
+      image-repository: ghcr.io/ahmadzadeh920/api-gateway 
+      image-tag: ${{ github.sha }} 
+      secrets: inherit
 
-
-    uses: ./.github/workflows/reusable-deploy.yml
-
-    with:
-
-      deployment-type: docker-compose
-
-      environment: production
-
-      image: ${{ needs.docker-push.outputs.image }}
-
-      image-tag: ${{ needs.docker-build.outputs.image-tag }}
-
-      compose-file: docker-compose.yml
-
-    secrets:
-
-      ssh-host: ${{ secrets.SERVER_HOST }}
-
-      ssh-user: ${{ secrets.SERVER_USER }}
-
-      ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
 ###############################################################################
 # Repository Sync
@@ -279,5 +302,3 @@ jobs:
 ###############################################################################
 # Notification
 ###############################################################################
-
-  
