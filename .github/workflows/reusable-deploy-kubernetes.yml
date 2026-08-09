@@ -1,14 +1,9 @@
-
-name: Reusable Kubernetes Deployment
+name: Reusable Deploy Kubernetes
 
 on:
   workflow_call:
 
     inputs:
-
-      # -----------------------------------------------------------------------
-      # Runner
-      # -----------------------------------------------------------------------
 
       runner:
         description: "GitHub Actions runner label"
@@ -16,12 +11,8 @@ on:
         type: string
         default: k3s
 
-      # -----------------------------------------------------------------------
-      # Application
-      # -----------------------------------------------------------------------
-
       application:
-        description: "Application / Helm release name"
+        description: "Kubernetes/Helm release name"
         required: true
         type: string
 
@@ -30,30 +21,10 @@ on:
         required: true
         type: string
 
-      # -----------------------------------------------------------------------
-      # Helm
-      # -----------------------------------------------------------------------
-
       helm-chart:
-        description: "Path to the Helm chart"
+        description: "Path to Helm chart"
         required: true
         type: string
-
-      values-file:
-        description: "Helm values file"
-        required: false
-        type: string
-        default: ""
-
-      helm-version:
-        description: "Helm version to install"
-        required: false
-        type: string
-        default: "v3.21.3"
-
-      # -----------------------------------------------------------------------
-      # Container image
-      # -----------------------------------------------------------------------
 
       image-repository:
         description: "Container image repository"
@@ -65,31 +36,11 @@ on:
         required: true
         type: string
 
-      # -----------------------------------------------------------------------
-      # Kubernetes
-      # -----------------------------------------------------------------------
-
-      kubectl-version:
-        description: "kubectl version to install"
+      values-file:
+        description: "Optional Helm values file"
         required: false
         type: string
-        default: "v1.29.15"
-
-      # -----------------------------------------------------------------------
-      # Deployment behaviour
-      # -----------------------------------------------------------------------
-
-      create-namespace:
-        description: "Create namespace if it does not exist"
-        required: false
-        type: boolean
-        default: true
-
-      wait:
-        description: "Wait for Kubernetes resources to become ready"
-        required: false
-        type: boolean
-        default: true
+        default: ""
 
       timeout:
         description: "Deployment rollout timeout"
@@ -97,15 +48,6 @@ on:
         type: string
         default: "180s"
 
-      # -----------------------------------------------------------------------
-      # Optional Helm configuration
-      # -----------------------------------------------------------------------
-
-      helm-extra-args:
-        description: "Additional arguments passed to Helm"
-        required: false
-        type: string
-        default: ""
 
 jobs:
 
@@ -115,69 +57,53 @@ jobs:
 
     runs-on: ${{ inputs.runner }}
 
-    environment:
-      name: ${{ inputs.namespace }}
-
-    permissions:
-      contents: read
-
     steps:
 
-      # =====================================================================
-      # 1. Checkout
-      # =====================================================================
+      ######################################################################
+      # Checkout
+      ######################################################################
 
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      # =====================================================================
-      # 2. Install kubectl
-      # =====================================================================
 
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v4
-        with:
-          version: ${{ inputs.kubectl-version }}
+      ######################################################################
+      # Verify kubectl
+      ######################################################################
 
-      # =====================================================================
-      # 3. Install Helm
-      # =====================================================================
-
-      - name: Setup Helm
-        uses: azure/setup-helm@v4
-        with:
-          version: ${{ inputs.helm-version }}
-
-      # =====================================================================
-      # 4. Install yq
-      # =====================================================================
-
-      - name: Setup yq
-        uses: mikefarah/yq@master
-
-      # =====================================================================
-      # 5. Verify CLI tools
-      # =====================================================================
-
-      - name: Verify deployment tools
+      - name: Check kubectl
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "kubectl:"
+          echo "Checking kubectl..."
+
+          command -v kubectl
+
           kubectl version --client
 
-          echo "helm:"
+
+      ######################################################################
+      # Verify Helm
+      ######################################################################
+
+      - name: Check Helm
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Checking Helm..."
+
+          command -v helm
+
           helm version
 
-          echo "yq:"
-          yq --version
 
-      # =====================================================================
-      # 6. Verify Kubernetes authentication
-      # =====================================================================
+      ######################################################################
+      # Check Kubernetes connection
+      ######################################################################
 
-      - name: Verify Kubernetes access
+      - name: Check Kubernetes
         shell: bash
         run: |
           set -euo pipefail
@@ -186,218 +112,138 @@ jobs:
 
           kubectl cluster-info
 
-          echo
-          echo "Kubernetes nodes:"
-          kubectl get nodes -o wide
+          echo "Nodes:"
+          kubectl get nodes
 
-      # =====================================================================
-      # 7. Validate Helm chart
-      # =====================================================================
 
-      - name: Validate Helm chart
-        shell: bash
-        run: |
-          set -euo pipefail
+      ######################################################################
+      # Create namespace
+      ######################################################################
 
-          echo "Validating Helm chart: ${{ inputs.helm-chart }}"
-
-          helm lint "${{ inputs.helm-chart }}"
-
-      # =====================================================================
-      # 8. Validate values file
-      # =====================================================================
-
-      - name: Validate Helm values
-        if: inputs.values-file != ''
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "Validating values file:"
-          echo "${{ inputs.values-file }}"
-
-          test -f "${{ inputs.values-file }}"
-
-          yq eval '.' "${{ inputs.values-file }}" > /dev/null
-
-          echo "Values file is valid."
-
-      # =====================================================================
-      # 9. Create namespace
-      # =====================================================================
-
-      - name: Ensure namespace exists
-        if: inputs.create-namespace
+      - name: Create namespace
         shell: bash
         run: |
           set -euo pipefail
 
           kubectl create namespace "${{ inputs.namespace }}" \
             --dry-run=client \
-            -o yaml \
-            | kubectl apply -f -
+            -o yaml |
+            kubectl apply -f -
 
-      # =====================================================================
-      # 10. Show current deployment state
-      # =====================================================================
 
-      - name: Show current deployment
+      ######################################################################
+      # Check GHCR secret
+      ######################################################################
+
+      - name: Check GHCR image pull secret
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "Namespace:"
-          kubectl get namespace "${{ inputs.namespace }}"
+          if kubectl get secret ghcr-secret \
+              --namespace "${{ inputs.namespace }}" \
+              >/dev/null 2>&1; then
 
-          echo
-          echo "Existing Helm releases:"
-          helm list \
-            --namespace "${{ inputs.namespace }}" \
-            || true
+            echo "GHCR secret exists."
 
-          echo
-          echo "Existing workloads:"
-          kubectl get deployment \
-            --namespace "${{ inputs.namespace }}" \
-            || true
+          else
 
-      # =====================================================================
-      # 11. Render Helm chart
-      # =====================================================================
+            echo "ERROR: ghcr-secret does not exist in namespace '${{ inputs.namespace }}'."
 
-      - name: Render Helm chart
+            exit 1
+
+          fi
+
+
+      ######################################################################
+      # Helm lint
+      ######################################################################
+
+      - name: Helm lint
         shell: bash
         run: |
           set -euo pipefail
 
-          HELM_ARGS=()
+          helm lint "${{ inputs.helm-chart }}"
 
-          if [[ -n "${{ inputs.values-file }}" ]]; then
-            HELM_ARGS+=(
-              --values "${{ inputs.values-file }}"
-            )
-          fi
 
-          helm template \
-            "${{ inputs.application }}" \
-            "${{ inputs.helm-chart }}" \
-            --namespace "${{ inputs.namespace }}" \
-            "${HELM_ARGS[@]}" \
-            --set-string "image.repository=${{ inputs.image-repository }}" \
-            --set-string "image.tag=${{ inputs.image-tag }}"
+      ######################################################################
+      # Helm template
+      ######################################################################
 
-      # =====================================================================
-      # 12. Deploy with Helm
-      # =====================================================================
-
-      - name: Deploy application with Helm
+      - name: Helm template
         shell: bash
         run: |
           set -euo pipefail
 
-          HELM_ARGS=()
+          if [ -n "${{ inputs.values-file }}" ]; then
 
-          if [[ -n "${{ inputs.values-file }}" ]]; then
-            HELM_ARGS+=(
-              --values "${{ inputs.values-file }}"
-            )
+            helm template \
+              "${{ inputs.application }}" \
+              "${{ inputs.helm-chart }}" \
+              --namespace "${{ inputs.namespace }}" \
+              --values "${{ inputs.values-file }}" \
+              --set image.repository="${{ inputs.image-repository }}" \
+              --set image.tag="${{ inputs.image-tag }}"
+
+          else
+
+            helm template \
+              "${{ inputs.application }}" \
+              "${{ inputs.helm-chart }}" \
+              --namespace "${{ inputs.namespace }}" \
+              --set image.repository="${{ inputs.image-repository }}" \
+              --set image.tag="${{ inputs.image-tag }}"
+
           fi
 
-          if [[ -n "${{ inputs.helm-extra-args }}" ]]; then
-            # shellcheck disable=SC2206
-            EXTRA_ARGS=( ${{ inputs.helm-extra-args }} )
 
-            HELM_ARGS+=(
-              "${EXTRA_ARGS[@]}"
-            )
-          fi
+      ######################################################################
+      # Deploy with Helm
+      ######################################################################
 
-          CREATE_NAMESPACE_ARG=""
-
-          if [[ "${{ inputs.create-namespace }}" == "true" ]]; then
-            CREATE_NAMESPACE_ARG="--create-namespace"
-          fi
+      - name: Deploy with Helm
+        shell: bash
+        run: |
+          set -euo pipefail
 
           echo "Deploying:"
-          echo "  Application : ${{ inputs.application }}"
-          echo "  Namespace   : ${{ inputs.namespace }}"
-          echo "  Chart       : ${{ inputs.helm-chart }}"
-          echo "  Image       : ${{ inputs.image-repository }}:${{ inputs.image-tag }}"
+          echo "Application: ${{ inputs.application }}"
+          echo "Namespace:   ${{ inputs.namespace }}"
+          echo "Image:       ${{ inputs.image-repository }}:${{ inputs.image-tag }}"
 
-          helm upgrade --install \
-            "${{ inputs.application }}" \
-            "${{ inputs.helm-chart }}" \
-            --namespace "${{ inputs.namespace }}" \
-            ${CREATE_NAMESPACE_ARG} \
-            --set-string "image.repository=${{ inputs.image-repository }}" \
-            --set-string "image.tag=${{ inputs.image-tag }}" \
-            "${HELM_ARGS[@]}"
+          HELM_ARGS=(
+            upgrade
+            --install
+            "${{ inputs.application }}"
+            "${{ inputs.helm-chart }}"
+            --namespace
+            "${{ inputs.namespace }}"
+            --create-namespace
+            --set
+            "image.repository=${{ inputs.image-repository }}"
+            --set
+            "image.tag=${{ inputs.image-tag }}"
+            --wait
+            --timeout
+            "${{ inputs.timeout }}"
+          )
 
-      # =====================================================================
-      # 13. Wait for rollout
-      # =====================================================================
+          if [ -n "${{ inputs.values-file }}" ]; then
+            HELM_ARGS+=(
+              --values
+              "${{ inputs.values-file }}"
+            )
+          fi
 
-      - name: Wait for deployment rollout
-        if: inputs.wait
-        shell: bash
-        run: |
-          set -euo pipefail
+          helm "${HELM_ARGS[@]}"
 
-          echo "Waiting for deployment..."
 
-          kubectl rollout status \
-            "deployment/${{ inputs.application }}" \
-            --namespace "${{ inputs.namespace }}" \
-            --timeout="${{ inputs.timeout }}"
+      ######################################################################
+      # Helm status
+      ######################################################################
 
-      # =====================================================================
-      # 14. Verify deployment
-      # =====================================================================
-
-      - name: Verify Kubernetes resources
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          echo "=================================================="
-          echo "Deployment"
-          echo "=================================================="
-
-          kubectl get deployment \
-            "${{ inputs.application }}" \
-            --namespace "${{ inputs.namespace }}" \
-            -o wide
-
-          echo
-          echo "=================================================="
-          echo "Pods"
-          echo "=================================================="
-
-          kubectl get pods \
-            --namespace "${{ inputs.namespace }}" \
-            -o wide
-
-          echo
-          echo "=================================================="
-          echo "Services"
-          echo "=================================================="
-
-          kubectl get service \
-            --namespace "${{ inputs.namespace }}"
-
-          echo
-          echo "=================================================="
-          echo "Ingress"
-          echo "=================================================="
-
-          kubectl get ingress \
-            --namespace "${{ inputs.namespace }}"
-
-      # =====================================================================
-      # 15. Verify Helm release
-      # =====================================================================
-
-      - name: Verify Helm release
+      - name: Helm status
         shell: bash
         run: |
           set -euo pipefail
@@ -406,30 +252,79 @@ jobs:
             "${{ inputs.application }}" \
             --namespace "${{ inputs.namespace }}"
 
-      # =====================================================================
-      # 16. Deployment summary
-      # =====================================================================
 
-      - name: Deployment summary
+      ######################################################################
+      # Rollout status
+      ######################################################################
+
+      - name: Wait for deployment
         shell: bash
         run: |
-          cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          set -euo pipefail
 
-          ## Kubernetes Deployment
-
-          | Property | Value |
-          |---|---|
-          | Application | \`${{ inputs.application }}\` |
-          | Namespace | \`${{ inputs.namespace }}\` |
-          | Image | \`${{ inputs.image-repository }}:${{ inputs.image-tag }}\` |
-          | Helm Chart | \`${{ inputs.helm-chart }}\` |
-          | Runner | \`${{ inputs.runner }}\` |
-
-          ### Resources
-
-          \`\`\`
-          $(kubectl get deployment,service,ingress \
-            --namespace "${{ inputs.namespace }}" 2>&1)
-          \`\`\`
+          kubectl rollout status \
+            deployment/"${{ inputs.application }}" \
+            --namespace "${{ inputs.namespace }}" \
+            --timeout="${{ inputs.timeout }}"
 
 
+      ######################################################################
+      # Verify deployment
+      ######################################################################
+
+      - name: Verify deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "Deployment:"
+          kubectl get deployment \
+            "${{ inputs.application }}" \
+            --namespace "${{ inputs.namespace }}"
+
+          echo
+
+          echo "Pods:"
+          kubectl get pods \
+            --namespace "${{ inputs.namespace }}" \
+            -o wide
+
+          echo
+
+          echo "Service:"
+          kubectl get service \
+            "${{ inputs.application }}" \
+            --namespace "${{ inputs.namespace }}"
+
+          echo
+
+          echo "Ingress:"
+          kubectl get ingress \
+            --namespace "${{ inputs.namespace }}"
+
+
+      ######################################################################
+      # Show recent events if deployment failed
+      ######################################################################
+
+      - name: Deployment diagnostics
+        if: failure()
+        shell: bash
+        run: |
+          echo "===== Pods ====="
+          kubectl get pods \
+            --namespace "${{ inputs.namespace }}" \
+            -o wide || true
+
+          echo
+
+          echo "===== Pod descriptions ====="
+          kubectl describe pods \
+            --namespace "${{ inputs.namespace }}" || true
+
+          echo
+
+          echo "===== Events ====="
+          kubectl get events \
+            --namespace "${{ inputs.namespace }}" \
+            --sort-by='.lastTimestamp' || true

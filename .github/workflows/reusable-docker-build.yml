@@ -193,8 +193,7 @@ jobs:
 
           build-args: ${{ inputs.build-args }}
 
-          tags: |
-            ${{ inputs.image-name }}:${{ inputs.image-tag }}
+          tags: ${{ inputs.image-name }}:${{ inputs.image-tag }}
 
           cache-from: ${{ inputs.cache && 'type=gha' || '' }}
 
