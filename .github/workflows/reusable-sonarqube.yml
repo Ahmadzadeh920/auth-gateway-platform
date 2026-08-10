@@ -121,7 +121,7 @@ jobs:
 
       - name: Run SonarQube Scan
 
-        uses: SonarSource/sonarqube-scan-action@v5
+        uses: sonarsource/sonarqube-scan-action@master
 
         env:
           SONAR_TOKEN: ${{ secrets.sonar-token }}

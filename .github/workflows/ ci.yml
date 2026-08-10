@@ -79,7 +79,7 @@ jobs:
 
     with:
 
-      runner: ubuntu-latest
+      runner: sonar
       project-base-dir: .
 
       download-artifact: true
@@ -251,17 +251,17 @@ jobs:
 
 
 ###############################################################################
-# deploy with Kubernetes
+# deploy with helm
 ###############################################################################
 
-  deploy-Kubernetes: 
-    name: Deploy-Kubernetes 
+  deploy-helm:: 
+    name: Deploy-helm 
     needs: 
       - docker-build
       - docker-push
-    uses: ./.github/workflows/reusable-deploy-kubernetes.yml
+    uses: ./.github/workflows/reusable-deploy-helm.yml
     with: 
-      runner: '["self-hosted", "k3s"]'
+      runner: self-hosted
       application: auth-gateway 
       namespace: myapp
       helm-chart: ./helm/auth-gateway 
@@ -270,6 +270,45 @@ jobs:
       image-tag: ${{ github.sha }} 
      
 
+###############################################################################
+# deploy with Kubernetes
+###############################################################################
+
+  deploy-Kubernetes:: 
+    name: Deploy-Kubernetes 
+    needs: 
+      - docker-build
+      - docker-push
+    uses: Ahmadzadeh920/auth-gateway-platform/.github/workflows/reusable-deploy-kubernetes.yml
+    with:
+      runner: self-hosted
+      application: auth-gateway
+      namespace: myapp
+      manifest: ./k8s
+      image-repository: ghcr.io/ahmadzadeh920/auth-gateway
+      image-tag: ${{ github.sha }}
+     
+###############################################################################
+# deploy with docker-compose 
+###############################################################################
+
+  deploy-docker-compose:: 
+    name: Deploy-docker-compose 
+    needs: 
+      - docker-build
+      - docker-push
+    uses: ./.github/workflows/reusable-deploy-docker-compose.yml
+    with:
+      runner: ubuntu-latest
+      environment: production
+      compose-file: docker-compose.yml
+      image: ghcr.io/ahmadzadeh920/auth-gateway
+      image-tag: ${{ github.sha }}
+    secrets:
+      ssh-host: ${{ secrets.SSH_HOST }}
+      ssh-user: ${{ secrets.SSH_USER }}
+      ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+     
 
 ###############################################################################
 # Repository Sync
