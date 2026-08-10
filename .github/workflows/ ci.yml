@@ -279,7 +279,7 @@ jobs:
     needs: 
       - docker-build
       - docker-push
-    uses: Ahmadzadeh920/auth-gateway-platform/.github/workflows/reusable-deploy-kubernetes.yml
+    uses: ./.github/workflows/reusable-deploy-kubernetes.yml
     with:
       runner: self-hosted
       application: auth-gateway
