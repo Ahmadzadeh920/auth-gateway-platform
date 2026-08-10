@@ -253,9 +253,9 @@ jobs:
 ###############################################################################
 # deploy with helm
 ###############################################################################
+  deploy-helm:
 
-  deploy-helm:: 
-    name: Deploy-helm 
+    name: Deploy helm 
     needs: 
       - docker-build
       - docker-push
@@ -274,8 +274,8 @@ jobs:
 # deploy with Kubernetes
 ###############################################################################
 
-  deploy-Kubernetes:: 
-    name: Deploy-Kubernetes 
+  deploy-Kubernetes:
+    name: Deploy Kubernetes 
     needs: 
       - docker-build
       - docker-push
@@ -292,8 +292,8 @@ jobs:
 # deploy with docker-compose 
 ###############################################################################
 
-  deploy-docker-compose:: 
-    name: Deploy-docker-compose 
+  deploy-docker-compose:
+    name: Deploy docker compose 
     needs: 
       - docker-build
       - docker-push
