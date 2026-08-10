@@ -79,8 +79,7 @@ jobs:
 
     with:
 
-      runner: sonar
-
+      runner: ubuntu-latest
       project-base-dir: .
 
       download-artifact: true
@@ -262,7 +261,7 @@ jobs:
       - docker-push
     uses: ./.github/workflows/reusable-deploy-kubernetes.yml
     with: 
-      runner: k3s 
+      runner: [self-hosted, k3s]
       application: auth-gateway 
       namespace: myapp
       helm-chart: ./helm/auth-gateway 
