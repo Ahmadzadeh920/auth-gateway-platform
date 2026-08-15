@@ -261,7 +261,7 @@ jobs:
       - docker-push
     uses: ./.github/workflows/reusable-deploy-helm.yml
     with: 
-      runner: self-hosted
+      runner: k3s
       application: auth-gateway 
       namespace: myapp
       helm-chart: ./helm/auth-gateway 
@@ -281,7 +281,7 @@ jobs:
       - docker-push
     uses: ./.github/workflows/reusable-deploy-kubernetes.yml
     with:
-      runner: self-hosted
+      runner: k3s
       application: auth-gateway
       namespace: myapp
       manifest: ./k8s
