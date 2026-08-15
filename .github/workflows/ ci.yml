@@ -301,7 +301,7 @@ jobs:
     with:
       runner: ubuntu-latest
       environment: production
-      compose-file: docker-compose.yml
+      compose-file: ./docker-compose-dev.yml
       image: ghcr.io/ahmadzadeh920/auth-gateway
       image-tag: ${{ github.sha }}
     secrets:

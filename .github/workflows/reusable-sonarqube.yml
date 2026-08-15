@@ -116,6 +116,20 @@ jobs:
           name: ${{ inputs.artifact-name }}
 
       ###########################################################
+      # check SonarQube connectivity
+      ###########################################################
+      - name: Check SonarQube connectivity
+        env:
+          SONAR_HOST_URL: ${{ secrets.sonar-host-url }}
+        run: |
+          echo "Runner: $(hostname)"
+          echo "SonarQube URL: $SONAR_HOST_URL"
+
+          echo "Testing SonarQube..."
+          curl --fail --show-error \
+            "$SONAR_HOST_URL/api/system/status"
+
+      ###########################################################
       # SonarQube Scan
       ###########################################################
 
