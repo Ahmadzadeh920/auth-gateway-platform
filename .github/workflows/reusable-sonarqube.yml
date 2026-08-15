@@ -103,6 +103,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: ${{ inputs.fetch-depth }}
+     
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
 
       ###########################################################
       # Download Test Reports
