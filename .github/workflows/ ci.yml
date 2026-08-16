@@ -272,7 +272,7 @@ jobs:
     with:
       runner: docker-compose
       environment: production
-      compose-file: ./docker-compose-dev.yml
+      compose-file: ./docker-compose-pro.yml
       image: ghcr.io/ahmadzadeh920/auth-gateway
       image-tag: ${{ github.sha }}
       remote-directory: /home/fatemeh/app   # add this line
