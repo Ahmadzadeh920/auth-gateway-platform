@@ -302,7 +302,7 @@ jobs:
 
       target-branch: release
 
-      target-repository: company/deployment
+      target-repository: Ahmadzadeh920/auth-gateway-platform
 
     secrets:
 
