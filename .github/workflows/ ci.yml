@@ -93,6 +93,7 @@ jobs:
       sonar-token: ${{ secrets.SONAR_TOKEN }}
 
       sonar-host-url: ${{ secrets.SONAR_HOST_URL }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
 
 ###############################################################################
 # Docker Build
@@ -233,6 +234,8 @@ jobs:
       values-file: ./helm/auth-gateway/values.yaml 
       image-repository: ghcr.io/ahmadzadeh920/api-gateway 
       image-tag: ${{ github.sha }} 
+    secrets:
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
      
 
 ###############################################################################
@@ -252,6 +255,8 @@ jobs:
       manifest: ./k8s
       image-repository: ghcr.io/ahmadzadeh920/auth-gateway
       image-tag: ${{ github.sha }}
+    secrets:
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
      
 ###############################################################################
 # deploy with docker-compose 
@@ -273,6 +278,7 @@ jobs:
       ssh-host: ${{ secrets.SSH_HOST }}
       ssh-user: ${{ secrets.SSH_USER }}
       ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
      
 
 ###############################################################################
@@ -299,8 +305,7 @@ jobs:
     secrets:
 
       target-token: ${{ secrets.REPO_SYNC_TOKEN }}
-
-
+      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
 
 
 ###############################################################################
