@@ -275,6 +275,7 @@ jobs:
       compose-file: ./docker-compose-dev.yml
       image: ghcr.io/ahmadzadeh920/auth-gateway
       image-tag: ${{ github.sha }}
+      remote-directory: /home/fatemeh/app   # add this line
     secrets:
       ssh-host: ${{ secrets.SSH_HOST }}
       ssh-user: ${{ secrets.SSH_USER }}
