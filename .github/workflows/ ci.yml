@@ -305,7 +305,7 @@ jobs:
     secrets:
 
       target-token: ${{ secrets.REPO_SYNC_TOKEN }}
-      DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+
 
 
 ###############################################################################
