@@ -65,6 +65,10 @@ on:
         description: "SSH private key"
         required: true
 
+      DEPLOY_KEY:
+        description: "deploy key"
+        required: true
+
 
 jobs:
 

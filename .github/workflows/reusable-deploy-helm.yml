@@ -54,6 +54,11 @@ on:
         required: false
         type: boolean
         default: true
+        
+    secrets:
+      DEPLOY_KEY:
+        description: "deploy key"
+        required: true
 
 
 jobs:

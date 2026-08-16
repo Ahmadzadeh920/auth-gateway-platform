@@ -43,6 +43,10 @@ on:
         required: false
         type: string
         default: "180s"
+    secrets:
+      DEPLOY_KEY:
+        description: "deploy key"
+        required: true
 
 
 jobs:
@@ -65,6 +69,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.DEPLOY_KEY }}
 
 
       ####################################################################

@@ -66,6 +66,10 @@ on:
 
       sonar-host-url:
         required: true
+      
+      DEPLOY_KEY:
+        description: "deploy key"
+        required: true
 
     outputs:
 
