@@ -174,20 +174,36 @@ jobs:
             "mkdir -p '${{ inputs.remote-directory }}'"
 
 
+
+
+      
+
       ####################################################################
       # Copy Compose file
       ####################################################################
 
-      - name: Copy Compose file
+      
+      - name: Sync deployment files
         shell: bash
         run: |
           set -euo pipefail
+          echo "Syncing deployment files to remote server..."
 
-          echo "Copying Compose file to remote server..."
-
-          scp \
+          rsync -az --delete \
+            -e "ssh -o BatchMode=yes" \
             "${{ inputs.compose-file }}" \
-            "${{ secrets.ssh-user }}@${{ secrets.ssh-host }}:${{ inputs.remote-directory }}/docker-compose.yml"
+            services/api-gateway \
+            docker \
+            "${{ secrets.ssh-user }}@${{ secrets.ssh-host }}:${{ inputs.remote-directory }}/"
+
+          ssh -o BatchMode=yes \
+            "${{ secrets.ssh-user }}@${{ secrets.ssh-host }}" \
+            "mkdir -p '${{ inputs.remote-directory }}/logs/traefik'"
+
+          ssh -o BatchMode=yes \
+            "${{ secrets.ssh-user }}@${{ secrets.ssh-host }}" \
+            "cp '${{ inputs.remote-directory }}/$(basename ${{ inputs.compose-file }})' '${{ inputs.remote-directory }}/docker-compose.yml'"
+
 
 
       ####################################################################
