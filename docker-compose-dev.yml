@@ -161,7 +161,7 @@ services:
 
 
   auth-middleware:
-    image: ${IMAGE}:${TAG} 
+    build: ./services/api-gateway
     networks:
       - traefik-net
     ports:

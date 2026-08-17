@@ -119,9 +119,9 @@ jobs:
 
       dockerfile: services/api-gateway/Dockerfile
 
-      image-name: api-gateway
+      image-name: auth-gateway
 
-      image-tag: latest
+      image-tag: ${{ github.sha }} 
 
       save-artifact: true
 
@@ -233,7 +233,7 @@ jobs:
       namespace: myapp
       helm-chart: ./helm/auth-gateway 
       values-file: ./helm/auth-gateway/values.yaml 
-      image-repository: ghcr.io/ahmadzadeh920/api-gateway 
+      image-repository: ghcr.io/ahmadzadeh920/auth-gateway
       image-tag: ${{ github.sha }} 
     secrets:
       DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
