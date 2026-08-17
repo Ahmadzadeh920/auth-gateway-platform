@@ -68,6 +68,12 @@ on:
       DEPLOY_KEY:
         description: "deploy key"
         required: true
+      
+
+      ghcr-username:          
+        required: true
+      ghcr-token:             
+        required: true
 
 
 jobs:
@@ -205,6 +211,17 @@ jobs:
             "cp '${{ inputs.remote-directory }}/$(basename ${{ inputs.compose-file }})' '${{ inputs.remote-directory }}/docker-compose.yml'"
 
 
+      ####################################################################
+      # Login to GHCR on remote host
+      ####################################################################
+
+      - name: Login to GHCR (remote)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes \
+            "${{ secrets.ssh-user }}@${{ secrets.ssh-host }}" \
+            "echo '${{ secrets.ghcr-token }}' | docker login ghcr.io -u '${{ secrets.ghcr-username }}' --password-stdin"
 
       ####################################################################
       # Deploy Docker Compose

@@ -281,6 +281,8 @@ jobs:
       ssh-user: ${{ secrets.SSH_USER }}
       ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
       DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+      ghcr-username: ${{ github.actor }}
+      ghcr-token: ${{ secrets.GHCR_PAT }}
      
 
 ###############################################################################
