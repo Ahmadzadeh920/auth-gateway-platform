@@ -219,19 +219,18 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for i in 1 2 3; do
+          for i in 1 2 3 4 5 6; do
             if ssh -o BatchMode=yes \
               "${{ secrets.ssh-user }}@${{ secrets.ssh-host }}" \
               "echo '${{ secrets.ghcr-token }}' | docker login ghcr.io -u '${{ secrets.ghcr-username }}' --password-stdin"; then
               echo "Login succeeded on attempt $i"
               exit 0
             fi
-            echo "Login attempt $i failed, retrying in 15s..."
-            sleep 15
+            echo "Login attempt $i failed, retrying in 20s..."
+            sleep 20
           done
-          echo "::error::GHCR login failed after 3 attempts"
+          echo "::error::GHCR login failed after 6 attempts"
           exit 1
-
       ####################################################################
       # Deploy Docker Compose
       ####################################################################
