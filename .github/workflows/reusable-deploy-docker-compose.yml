@@ -286,6 +286,18 @@ jobs:
           echo "::error::docker compose pull failed after 8 attempts"
           exit 1
 
+      ####################################################################
+      # Stop existing containers before redeploy
+      ####################################################################
+
+      - name: Stop existing containers
+        shell: bash
+        run: |
+          set -euo pipefail
+          ssh -o BatchMode=yes \
+            "${{ secrets.ssh-user }}@${{ secrets.ssh-host }}" \
+            "cd '${{ inputs.remote-directory }}' && docker compose down || true"
+
 
       ####################################################################
       # Deploy containers
