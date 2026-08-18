@@ -120,6 +120,20 @@ jobs:
           git fetch origin
 
           git fetch target
+      ##########################################################
+      # Debug Secret
+      ##########################################################
+
+      - name: Debug Secret
+        run: |
+          if [ -z "$TOKEN" ]; then
+            echo "::error::target-token is EMPTY — secret not passed correctly"
+          else
+            echo "target-token is set, length: ${#TOKEN}"
+            echo "First 4 chars: ${TOKEN:0:4}"
+          fi
+        env:
+          TOKEN: ${{ secrets.target-token }}
 
       ##########################################################
       # Push Branch

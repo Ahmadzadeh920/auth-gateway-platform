@@ -292,11 +292,13 @@ jobs:
   sync:
 
     name: Repository Sync
+  
 
     needs: 
       - Deploy-Kubernetes 
 
     uses: ./.github/workflows/reusable-sync.yml
+
 
     with:
 
