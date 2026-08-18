@@ -83,6 +83,7 @@ jobs:
 
         with:
           fetch-depth: ${{ inputs.fetch-depth }}
+          persist-credentials: false
 
         
 
