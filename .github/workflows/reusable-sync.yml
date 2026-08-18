@@ -118,7 +118,7 @@ jobs:
 
         run: |
 
-          git fetch origin
+          git fetch origin "${{ inputs.source-branch }}"
 
           git fetch target
       ##########################################################
@@ -144,16 +144,19 @@ jobs:
 
         run: |
 
+          SOURCE_REF="refs/remotes/origin/${{ inputs.source-branch }}"
+          TARGET_REF="refs/heads/${{ inputs.target-branch }}"
+
+          echo "Source: $SOURCE_REF"
+          echo "Target: $TARGET_REF"
+
           if [ "${{ inputs.force-push }}" = "true" ]; then
 
-            git push target \
-              origin/${{ inputs.source-branch }}:${{ inputs.target-branch }} \
-              --force
+            git push target "$SOURCE_REF:$TARGET_REF" --force
 
           else
 
-            git push target \
-              origin/${{ inputs.source-branch }}:${{ inputs.target-branch }}
+            git push target "$SOURCE_REF:$TARGET_REF"
 
           fi
 
